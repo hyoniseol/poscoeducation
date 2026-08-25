@@ -3,6 +3,19 @@ function loadKey() {
 }
 
 const searchCache = globalThis.__cafeFinderSearchCache || (globalThis.__cafeFinderSearchCache = new Map());
+function supabaseConfig() { return { url: process.env.SUPABASE_URL, key: process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY }; }
+async function readSupabaseCache(query) {
+  const { url, key } = supabaseConfig(); if (!url || !key) return null;
+  const endpoint = `${url}/rest/v1/search_cache?cache_key=eq.${encodeURIComponent(query)}&select=results,expires_at&limit=1`;
+  const response = await fetch(endpoint, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  if (!response.ok) return null;
+  const rows = await response.json(); const row = rows[0];
+  return row && new Date(row.expires_at).getTime() > Date.now() ? row.results : null;
+}
+async function writeSupabaseCache(query, results) {
+  const { url, key } = supabaseConfig(); if (!url || !key) return;
+  await fetch(`${url}/rest/v1/search_cache`, { method: 'POST', headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ cache_key: query, results, expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), updated_at: new Date().toISOString() }) });
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'GET 요청만 허용됩니다.' });
@@ -17,6 +30,8 @@ module.exports = async function handler(req, res) {
   }
   const query = params.get('query');
   if (!query) return res.status(400).json({ error: '검색어가 필요합니다.' });
+  const supabaseCached = await readSupabaseCache(query);
+  if (supabaseCached?.length) return res.status(200).json({ results: supabaseCached, cached: true, source: 'supabase' });
   const cached = searchCache.get(query);
   if (cached && cached.expiresAt > Date.now()) return res.status(200).json({ results: cached.results, cached: true });
   if (!loadKey()) return res.status(500).json({ error: 'OPENAI_API_KEY가 Vercel에 설정되지 않았습니다.' });
@@ -30,6 +45,7 @@ module.exports = async function handler(req, res) {
     if (!match) return res.status(502).json({ error: 'OpenAI가 구조화된 검색 결과를 반환하지 않았습니다.' });
     const results = JSON.parse(match[0]);
     searchCache.set(query, { results, expiresAt: Date.now() + 15 * 60 * 1000 });
+    await writeSupabaseCache(query, results);
     return res.status(200).json({ results, cached: false });
   } catch (error) { return res.status(500).json({ error: error.message }); }
 };
