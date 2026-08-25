@@ -16,7 +16,19 @@ let cafeMap;
 let cafeMapMarkers;
 const defaultMapCenter = [37.5665, 126.978];
 async function geocodeCafe(name, address, location) { const response = await fetch(`/api/geocode?name=${encodeURIComponent(name || '')}&address=${encodeURIComponent(address || '')}&location=${encodeURIComponent(location || '')}`); if (!response.ok) throw new Error(`주소 변환 실패: ${response.status}`); return response.json(); }
-async function updateCafeMap(location, cafes = []) { if (!window.L || !$('#cafeMap')) return; if (!cafeMap) { cafeMap = L.map('cafeMap').setView(defaultMapCenter, 13); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(cafeMap); cafeMapMarkers = L.layerGroup().addTo(cafeMap); } cafeMapMarkers.clearLayers(); const points = []; for (const cafe of cafes.slice(0, 3)) { try { const place = await geocodeCafe(cafe.name, cafe.address, location); if (place && Number.isFinite(Number(place.lat)) && Number.isFinite(Number(place.lon))) { const point = [Number(place.lat), Number(place.lon)]; points.push(point); L.marker(point).addTo(cafeMapMarkers).bindPopup(`<strong>${cafe.name || '추천 카페'}</strong><br>${cafe.address || ''}`); } } catch (error) { console.warn('카페 주소 좌표 변환 실패', cafe.address, error); } await new Promise((resolve) => setTimeout(resolve, 2200)); } if (points.length) { cafeMap.fitBounds(L.latLngBounds(points), { padding: [30, 30], maxZoom: 16 }); } else { try { const place = await geocodeCafe('', '', location); if (place && Number.isFinite(Number(place.lat))) cafeMap.setView([Number(place.lat), Number(place.lon)], 14); } catch (error) { console.warn('검색 지역 좌표 변환 실패', location, error); cafeMap.setView(defaultMapCenter, 12); } } setTimeout(() => cafeMap.invalidateSize(), 100); }
+async function updateCafeMap(location, cafes = []) {
+  if (!window.L || !$('#cafeMap')) return;
+  if (!cafeMap) { cafeMap = L.map('cafeMap').setView(defaultMapCenter, 13); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(cafeMap); cafeMapMarkers = L.layerGroup().addTo(cafeMap); }
+  cafeMapMarkers.clearLayers();
+  const results = await Promise.all(cafes.slice(0, 3).map(async (cafe) => {
+    try { const place = await geocodeCafe(cafe.name, cafe.address, location); return place && Number.isFinite(Number(place.lat)) && Number.isFinite(Number(place.lon)) ? { cafe, point: [Number(place.lat), Number(place.lon)] } : null; }
+    catch (error) { console.warn('카페 주소 좌표 변환 실패', cafe.address, error); return null; }
+  }));
+  const points = results.filter(Boolean).map(({ cafe, point }) => { L.marker(point).addTo(cafeMapMarkers).bindPopup(`<strong>${cafe.name || '추천 카페'}</strong><br>${cafe.address || ''}`); return point; });
+  if (points.length) cafeMap.fitBounds(L.latLngBounds(points), { padding: [30, 30], maxZoom: 16 });
+  else { try { const place = await geocodeCafe('', '', location); if (place && Number.isFinite(Number(place.lat))) cafeMap.setView([Number(place.lat), Number(place.lon)], 14); } catch (error) { console.warn('검색 지역 좌표 변환 실패', location, error); cafeMap.setView(defaultMapCenter, 12); } }
+  setTimeout(() => cafeMap.invalidateSize(), 100);
+}
 let googleGeocoder;
 let googleMapReady;
 function loadGoogleMap() {
