@@ -59,6 +59,7 @@ async function renderResults() {
   const conditions = [location, '카페', `방문 목적: ${purpose}`, `방문 시간: ${$('#date').value || '시간 미지정'}`, `동행 인원: ${people}`, `체류 시간: ${stay}`, selected.length ? `필수 조건: ${selected.join(', ')}` : ''].filter(Boolean).join(' / ');
   const quickPreview = [1, 2, 3].map((index) => ({ name: `${location} 인근 카페 후보 ${index}`, address: `${location} 주변`, businessHours: '최신 정보 확인 중', crowdLevel: '정보 확인 필요', seatType: '정보 확인 필요', noiseLevel: '정보 확인 필요', outlet: '정보 확인 필요', signatureMenu: '정보 확인 필요', preview: true }));
   renderCards(quickPreview, { preview: true });
+  updateCafeMap(location, []).catch(() => {});
   const cacheKey = `cafeSearch:${conditions}`;
   const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
   if (cached?.results?.length) { renderCards(cached.results); $('#cards').insertAdjacentHTML('afterbegin', '<div class="cache-note">빠른 결과를 먼저 표시했습니다 · 최신 정보 확인 중</div>'); }
