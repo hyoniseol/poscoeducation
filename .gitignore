@@ -10,6 +10,7 @@ build/
 tmp_presentation/
 *.pptx
 *.pdf
+api/maps-config.js
 
 .vercel
 .env*
