@@ -1,6 +1,8 @@
 {
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
-    { "source": "/api/search", "destination": "/api/search.js" }
+    { "source": "/api/search", "destination": "/api/search.js" },
+    { "source": "/api/supabase-config", "destination": "/api/supabase-config.js" },
+    { "source": "/api/map", "destination": "/api/search.js" }
   ]
 }
