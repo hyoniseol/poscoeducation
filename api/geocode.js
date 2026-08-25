@@ -1,6 +1,7 @@
 module.exports = async function handler(req, res) {
   try {
-    const address = new URL(req.url, 'https://vercel.local').searchParams.get('address');
+    const params = new URL(req.url, 'https://vercel.local').searchParams;
+    const address = params.get('address') || params.get('location') || params.get('name');
     if (!address) return res.status(400).json({ error: '주소가 필요합니다.' });
     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=kr&q=${encodeURIComponent(address)}`, { headers: { 'User-Agent': 'CafeFinder/1.0', Accept: 'application/json' } });
     if (!response.ok) return res.status(response.status).json({ error: '주소 검색 오류' });
