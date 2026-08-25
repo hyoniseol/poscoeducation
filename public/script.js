@@ -17,10 +17,13 @@ document.querySelectorAll('.chip').forEach((button) => button.addEventListener('
 let cafeMap;
 let cafeMapMarkers;
 const defaultMapCenter = [37.5665, 126.978];
+const quickMapCenters = { 서울: [37.5665, 126.978], 성수: [37.5446, 127.0559], 강남: [37.4979, 127.0276], 홍대: [37.5563, 126.9236], 부산: [35.1796, 129.0756], 대구: [35.8714, 128.6014], 인천: [37.4563, 126.7052], 광주: [35.1595, 126.8526], 대전: [36.3504, 127.3845], 울산: [35.5384, 129.3114], 제주: [33.4996, 126.5312], 세종: [36.4801, 127.2890], 수원: [37.2636, 127.0286], 전주: [35.8242, 127.1480], 춘천: [37.8813, 127.7298], 청주: [36.6424, 127.4890], 포항: [36.0190, 129.3435], 창원: [35.2280, 128.6811] };
+function getQuickMapCenter(location) { const key = Object.keys(quickMapCenters).find((name) => String(location || '').includes(name)); return key ? quickMapCenters[key] : defaultMapCenter; }
 async function geocodeCafe(name, address, location) { const response = await fetch(`/api/geocode?name=${encodeURIComponent(name || '')}&address=${encodeURIComponent(address || '')}&location=${encodeURIComponent(location || '')}`); if (!response.ok) throw new Error(`주소 변환 실패: ${response.status}`); return response.json(); }
 async function updateCafeMap(location, cafes = []) {
   if (!window.L || !$('#cafeMap')) return;
   if (!cafeMap) { cafeMap = L.map('cafeMap').setView(defaultMapCenter, 13); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(cafeMap); cafeMapMarkers = L.layerGroup().addTo(cafeMap); }
+  cafeMap.setView(getQuickMapCenter(location), 13, { animate: false });
   cafeMapMarkers.clearLayers();
   const results = await Promise.all(cafes.slice(0, 3).map(async (cafe) => {
     try { const place = await geocodeCafe(cafe.name, cafe.address, location); return place && Number.isFinite(Number(place.lat)) && Number.isFinite(Number(place.lon)) ? { cafe, point: [Number(place.lat), Number(place.lon)] } : null; }
